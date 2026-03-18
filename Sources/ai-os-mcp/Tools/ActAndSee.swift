@@ -72,10 +72,10 @@ func handleActAndSee(
         actionResult = "navigated to '\(fullURL)'"
 
     case "click_at":
-        guard let xVal = params.arguments?["x"], let x = Double(xVal) else {
+        guard let xVal = params.arguments?["x"], let x = Double(xVal, strict: false) else {
             throw AIOSError.invalidArguments(detail: "x coordinate is required for click_at action")
         }
-        guard let yVal = params.arguments?["y"], let y = Double(yVal) else {
+        guard let yVal = params.arguments?["y"], let y = Double(yVal, strict: false) else {
             throw AIOSError.invalidArguments(detail: "y coordinate is required for click_at action")
         }
         try actions.mouseClick(x: x, y: y, button: .left, clickType: .single)
