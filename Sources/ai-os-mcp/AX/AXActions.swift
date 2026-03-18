@@ -125,6 +125,118 @@ final class AXActions: @unchecked Sendable {
         keyUp.post(tap: .cghidEventTap)
     }
 
+    // MARK: - Mouse Button Type
+
+    enum MouseButton: String {
+        case left, right, middle
+    }
+
+    enum ClickType: String {
+        case single, double, triple
+    }
+
+    // MARK: - Mouse Click
+
+    func mouseClick(x: Double, y: Double, button: MouseButton, clickType: ClickType) throws {
+        let point = CGPoint(x: x, y: y)
+        let (downType, upType, cgButton) = try mouseEventTypes(for: button)
+
+        let clickCount: Int64
+        switch clickType {
+        case .single: clickCount = 1
+        case .double: clickCount = 2
+        case .triple: clickCount = 3
+        }
+
+        for i in 1...Int(clickCount) {
+            guard let down = CGEvent(mouseEventSource: nil, mouseType: downType, mouseCursorPosition: point, mouseButton: cgButton),
+                  let up = CGEvent(mouseEventSource: nil, mouseType: upType, mouseCursorPosition: point, mouseButton: cgButton)
+            else {
+                throw AIOSError.actionFailed(action: "mouse_click", detail: "Failed to create CGEvent")
+            }
+            down.setIntegerValueField(.mouseEventClickState, value: Int64(i))
+            up.setIntegerValueField(.mouseEventClickState, value: Int64(i))
+            down.post(tap: .cghidEventTap)
+            up.post(tap: .cghidEventTap)
+            usleep(30_000) // 30ms between clicks
+        }
+    }
+
+    private func mouseEventTypes(for button: MouseButton) throws -> (CGEventType, CGEventType, CGMouseButton) {
+        switch button {
+        case .left:
+            return (.leftMouseDown, .leftMouseUp, .left)
+        case .right:
+            return (.rightMouseDown, .rightMouseUp, .right)
+        case .middle:
+            return (.otherMouseDown, .otherMouseUp, .center)
+        }
+    }
+
+    // MARK: - Mouse Drag
+
+    func mouseDrag(fromX: Double, fromY: Double, toX: Double, toY: Double, duration: Double) throws {
+        let from = CGPoint(x: fromX, y: fromY)
+        let to = CGPoint(x: toX, y: toY)
+
+        guard let down = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: from, mouseButton: .left) else {
+            throw AIOSError.actionFailed(action: "mouse_drag", detail: "Failed to create CGEvent")
+        }
+        down.post(tap: .cghidEventTap)
+
+        // Smooth interpolation
+        let steps = max(10, Int(duration * 60)) // ~60fps
+        for i in 1...steps {
+            let t = Double(i) / Double(steps)
+            let x = fromX + (toX - fromX) * t
+            let y = fromY + (toY - fromY) * t
+            let point = CGPoint(x: x, y: y)
+            if let move = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDragged, mouseCursorPosition: point, mouseButton: .left) {
+                move.post(tap: .cghidEventTap)
+            }
+            usleep(UInt32(duration / Double(steps) * 1_000_000))
+        }
+
+        guard let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: to, mouseButton: .left) else {
+            throw AIOSError.actionFailed(action: "mouse_drag", detail: "Failed to create mouse up event")
+        }
+        up.post(tap: .cghidEventTap)
+    }
+
+    // MARK: - Scroll
+
+    func scroll(direction: String, amount: Int, atX: Double, atY: Double) throws {
+        // Move mouse to target position first
+        let point = CGPoint(x: atX, y: atY)
+        if let move = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left) {
+            move.post(tap: .cghidEventTap)
+            usleep(50_000) // 50ms for mouse to settle
+        }
+
+        let (deltaY, deltaX): (Int32, Int32)
+        switch direction.lowercased() {
+        case "up": (deltaY, deltaX) = (Int32(amount), 0)
+        case "down": (deltaY, deltaX) = (Int32(-amount), 0)
+        case "left": (deltaY, deltaX) = (0, Int32(amount))
+        case "right": (deltaY, deltaX) = (0, Int32(-amount))
+        default:
+            throw AIOSError.invalidArguments(
+                detail: "Invalid scroll direction: '\(direction)'. Valid: up, down, left, right"
+            )
+        }
+
+        // Send scroll events in increments for smooth scrolling
+        let perStepY = deltaY / Int32(amount)
+        let perStepX = deltaX / Int32(amount)
+        for _ in 0..<amount {
+            let scrollEvent = CGEvent(scrollWheelEvent2Source: nil, units: .line,
+                                      wheelCount: 2, wheel1: perStepY,
+                                      wheel2: perStepX, wheel3: 0)
+            scrollEvent?.post(tap: .cghidEventTap)
+            usleep(16_000) // ~60fps
+        }
+    }
+
     // MARK: - Key Code Mapping
 
     private func keyCodeFor(_ key: String) -> CGKeyCode? {
