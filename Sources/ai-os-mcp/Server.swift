@@ -531,10 +531,10 @@ func registerTools(on server: Server, screenCapture: ScreenCapture) async {
             Tool(
                 name: "get_screen",
                 description: """
-                    Get the current screen as an inline image with zero capture latency. \
-                    Uses a persistent display stream — the frame is already in memory. \
-                    Optionally includes a compact AX tree summary for an app. \
-                    Returns nothing if the screen hasn't changed since last call.
+                    Read what's on screen as structured text — zero images. \
+                    Uses Vision OCR to extract all text with pixel coordinates, \
+                    plus the AX tree for interactive elements. Returns pure JSON \
+                    that Claude processes as text, not vision. ~50-250ms.
                     """,
                 inputSchema: .object([
                     "type": .string("object"),
@@ -542,19 +542,19 @@ func registerTools(on server: Server, screenCapture: ScreenCapture) async {
                         "app_name": .object([
                             "type": .string("string"),
                             "description": .string(
-                                "Optional: include AX tree summary for this app"
+                                "Optional: include AX tree for this app's interactive elements"
                             ),
                         ]),
                         "include_ax_tree": .object([
                             "type": .string("boolean"),
                             "description": .string(
-                                "Include AX tree summary (default: true)"
+                                "Include AX tree elements (default: true)"
                             ),
                         ]),
-                        "quality": .object([
-                            "type": .string("number"),
+                        "include_ocr": .object([
+                            "type": .string("boolean"),
                             "description": .string(
-                                "JPEG quality 0.0-1.0 (default: 0.6)"
+                                "Include Vision OCR text extraction (default: true)"
                             ),
                         ]),
                     ]),
@@ -563,9 +563,10 @@ func registerTools(on server: Server, screenCapture: ScreenCapture) async {
             Tool(
                 name: "act_and_see",
                 description: """
-                    Perform an action AND return the resulting screen in ONE call. \
-                    Eliminates the act-then-screenshot round-trip. Actions: click \
-                    (by AX element search), type, press_key, navigate (open URL in app).
+                    Perform an action AND return what's on screen as structured text — \
+                    zero images. Uses Vision OCR after the action to extract all text \
+                    with pixel coordinates. Actions: click, click_at (coordinates), \
+                    type, press_key, navigate (open URL in app).
                     """,
                 inputSchema: .object([
                     "type": .string("object"),

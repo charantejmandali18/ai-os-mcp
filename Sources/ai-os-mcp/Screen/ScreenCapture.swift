@@ -3,6 +3,7 @@ import CoreGraphics
 import CoreMedia
 import AppKit
 import Foundation
+import Vision
 
 /// Persistent screen capture engine using ScreenCaptureKit.
 /// Maintains a ~2 FPS stream of the full display and keeps the latest frame
@@ -135,6 +136,30 @@ final class ScreenCapture: NSObject, @unchecked Sendable, SCStreamOutput, SCStre
         return latestFrame
     }
 
+    /// Write the latest frame to a temp file and return the path.
+    /// Uses PNG for lossless quality — no encode/decode overhead for Claude.
+    /// Returns `(filePath, didChange)`.
+    private static let tempPath = "/tmp/ai-os-mcp-screen.png"
+
+    func getLatestFramePath() -> (String?, Bool) {
+        lock.lock()
+        let frame = latestFrame
+        let hash = frameHash
+        let changed = hash != lastSentHash
+        if changed { lastSentHash = hash }
+        lock.unlock()
+
+        guard let frame = frame else { return (nil, false) }
+        guard changed else { return (Self.tempPath, false) }
+
+        let bitmapRep = NSBitmapImageRep(cgImage: frame)
+        guard let data = bitmapRep.representation(using: .png, properties: [:]) else {
+            return (nil, false)
+        }
+        try? data.write(to: URL(fileURLWithPath: Self.tempPath))
+        return (Self.tempPath, true)
+    }
+
     /// Check if the screen has changed since the last `getLatestFrameBase64` call.
     func hasChanged() -> Bool {
         lock.lock()
@@ -197,6 +222,57 @@ final class ScreenCapture: NSObject, @unchecked Sendable, SCStreamOutput, SCStre
             )
         }
         return data.base64EncodedString()
+    }
+
+    // MARK: - Vision OCR
+
+    struct ScreenText {
+        let text: String
+        let x: Int
+        let y: Int
+        let width: Int
+        let height: Int
+        let confidence: Double
+    }
+
+    /// Run OCR on the latest frame using macOS Vision framework.
+    /// Returns all text on screen with exact pixel coordinates.
+    /// ~50-250ms on Apple Silicon depending on screen complexity.
+    func extractTexts() -> (texts: [ScreenText], screenWidth: Int, screenHeight: Int, changed: Bool) {
+        lock.lock()
+        let frame = latestFrame
+        let hash = frameHash
+        let changed = hash != lastSentHash
+        if changed { lastSentHash = hash }
+        lock.unlock()
+
+        guard let frame = frame else { return ([], 0, 0, false) }
+        guard changed else { return ([], frame.width, frame.height, false) }
+
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .fast
+        request.usesLanguageCorrection = false
+
+        let handler = VNImageRequestHandler(cgImage: frame)
+        try? handler.perform([request])
+
+        let w = Double(frame.width)
+        let h = Double(frame.height)
+
+        let texts = (request.results ?? []).compactMap { observation -> ScreenText? in
+            guard let candidate = observation.topCandidates(1).first else { return nil }
+            let box = observation.boundingBox
+            return ScreenText(
+                text: candidate.string,
+                x: Int(box.origin.x * w),
+                y: Int((1.0 - box.origin.y - box.height) * h),
+                width: Int(box.width * w),
+                height: Int(box.height * h),
+                confidence: Double(round(candidate.confidence * 100) / 100)
+            )
+        }
+
+        return (texts, frame.width, frame.height, true)
     }
 
     // MARK: - Frame Hashing

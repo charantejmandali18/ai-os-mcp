@@ -85,17 +85,26 @@ func handleActAndSee(
         throw AIOSError.invalidArguments(detail: "Unknown action: '\(action)'. Valid: click, click_at, type, press_key, navigate")
     }
 
-    // Wait briefly for the action to take effect, then grab the screen
+    // Wait briefly for the action to take effect, then run OCR on the result
     usleep(500_000) // 500ms for UI to update
 
-    let (frame, _) = screenCapture.getLatestFrameBase64(quality: 0.6)
+    let (texts, screenW, screenH, _) = screenCapture.extractTexts()
 
-    var content: [Tool.Content] = []
-    content.append(.text("{\"action\":\"\(actionResult)\",\"app\":\"\(resolvedName)\"}"))
+    var result: [String: Any] = [
+        "action": actionResult,
+        "app": resolvedName,
+        "screenSize": [screenW, screenH],
+        "textCount": texts.count,
+        "texts": texts.map { t in
+            [
+                "text": t.text,
+                "x": t.x, "y": t.y,
+                "w": t.width, "h": t.height,
+            ] as [String: Any]
+        },
+    ]
 
-    if let base64 = frame {
-        content.append(.image(data: base64, mimeType: "image/jpeg", metadata: nil))
-    }
-
-    return .init(content: content, isError: false)
+    let json = try JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
+    let text = String(data: json, encoding: .utf8) ?? "{}"
+    return .init(content: [.text(text)], isError: false)
 }
