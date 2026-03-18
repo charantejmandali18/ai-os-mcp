@@ -157,6 +157,354 @@ func registerTools(on server: Server) async {
                     "required": .array([.string("key")]),
                 ])
             ),
+            Tool(
+                name: "scroll",
+                description: """
+                    Scroll within an app or specific element. Finds the target window \
+                    or element and delivers scroll wheel events there.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "app_name": .object([
+                            "type": .string("string"),
+                            "description": .string("Target application name"),
+                        ]),
+                        "direction": .object([
+                            "type": .string("string"),
+                            "enum": .array([
+                                .string("up"), .string("down"),
+                                .string("left"), .string("right"),
+                            ]),
+                            "description": .string("Scroll direction"),
+                        ]),
+                        "amount": .object([
+                            "type": .string("integer"),
+                            "description": .string("Number of scroll increments (default: 3)"),
+                        ]),
+                        "element_search": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Optional: scroll within a specific element found by this text"
+                            ),
+                        ]),
+                    ]),
+                    "required": .array([.string("app_name"), .string("direction")]),
+                ])
+            ),
+            Tool(
+                name: "mouse_click_at",
+                description: """
+                    Raw coordinate-based mouse click. Fallback when semantic element \
+                    search fails. Uses macOS global coordinate system.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "x": .object([
+                            "type": .string("number"),
+                            "description": .string("Screen x coordinate (global macOS coordinates)"),
+                        ]),
+                        "y": .object([
+                            "type": .string("number"),
+                            "description": .string("Screen y coordinate"),
+                        ]),
+                        "button": .object([
+                            "type": .string("string"),
+                            "enum": .array([
+                                .string("left"), .string("right"), .string("middle"),
+                            ]),
+                            "description": .string("Mouse button (default: left)"),
+                        ]),
+                        "click_type": .object([
+                            "type": .string("string"),
+                            "enum": .array([
+                                .string("single"), .string("double"), .string("triple"),
+                            ]),
+                            "description": .string("Click type (default: single)"),
+                        ]),
+                        "app_name": .object([
+                            "type": .string("string"),
+                            "description": .string("Optional: raise this app before clicking"),
+                        ]),
+                    ]),
+                    "required": .array([.string("x"), .string("y")]),
+                ])
+            ),
+            Tool(
+                name: "mouse_drag",
+                description: """
+                    Drag from one point to another. Uses macOS global coordinate system \
+                    with smooth movement over the specified duration.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "from_x": .object([
+                            "type": .string("number"),
+                            "description": .string("Start x coordinate"),
+                        ]),
+                        "from_y": .object([
+                            "type": .string("number"),
+                            "description": .string("Start y coordinate"),
+                        ]),
+                        "to_x": .object([
+                            "type": .string("number"),
+                            "description": .string("End x coordinate"),
+                        ]),
+                        "to_y": .object([
+                            "type": .string("number"),
+                            "description": .string("End y coordinate"),
+                        ]),
+                        "duration": .object([
+                            "type": .string("number"),
+                            "description": .string(
+                                "Drag duration in seconds for smooth movement (default: 0.5)"
+                            ),
+                        ]),
+                        "app_name": .object([
+                            "type": .string("string"),
+                            "description": .string("Optional: raise this app before dragging"),
+                        ]),
+                    ]),
+                    "required": .array([
+                        .string("from_x"), .string("from_y"),
+                        .string("to_x"), .string("to_y"),
+                    ]),
+                ])
+            ),
+            Tool(
+                name: "take_screenshot",
+                description: """
+                    Capture a screenshot of a specific app window or the full screen. \
+                    Returns a file path to the saved image. Use as a last resort when \
+                    structured data (AX tree, DOM) is not available.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "app_name": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Capture this app's window. Omit for full screen."
+                            ),
+                        ]),
+                        "max_width": .object([
+                            "type": .string("integer"),
+                            "description": .string(
+                                "Max width in pixels, image scaled to fit (default: 1280)"
+                            ),
+                        ]),
+                        "max_height": .object([
+                            "type": .string("integer"),
+                            "description": .string(
+                                "Max height in pixels (default: 800)"
+                            ),
+                        ]),
+                        "format": .object([
+                            "type": .string("string"),
+                            "enum": .array([.string("png"), .string("jpeg")]),
+                            "description": .string(
+                                "Image format (default: jpeg). JPEG is 5-10x smaller."
+                            ),
+                        ]),
+                        "quality": .object([
+                            "type": .string("number"),
+                            "description": .string(
+                                "JPEG quality 0.0-1.0 (default: 0.7). Ignored for PNG."
+                            ),
+                        ]),
+                    ]),
+                ])
+            ),
+            Tool(
+                name: "open_application",
+                description: """
+                    Launch an application by name or bundle ID. If already running, \
+                    brings it to the front.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "app_name": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "App display name (e.g. 'Safari') or bundle ID (e.g. 'com.apple.Safari')"
+                            ),
+                        ]),
+                    ]),
+                    "required": .array([.string("app_name")]),
+                ])
+            ),
+            Tool(
+                name: "open_url",
+                description: "Open a URL in the default browser.",
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "url": .object([
+                            "type": .string("string"),
+                            "description": .string("URL to open"),
+                        ]),
+                    ]),
+                    "required": .array([.string("url")]),
+                ])
+            ),
+            Tool(
+                name: "manage_window",
+                description: """
+                    Resize, move, minimize, maximize, fullscreen, or restore a window. \
+                    Uses accessibility APIs to manipulate window position and size.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "app_name": .object([
+                            "type": .string("string"),
+                            "description": .string("Target application name"),
+                        ]),
+                        "action": .object([
+                            "type": .string("string"),
+                            "enum": .array([
+                                .string("resize"), .string("move"),
+                                .string("minimize"), .string("maximize"),
+                                .string("fullscreen"), .string("restore"),
+                            ]),
+                            "description": .string("Window action to perform"),
+                        ]),
+                        "x": .object([
+                            "type": .string("number"),
+                            "description": .string("X position (required for 'move')"),
+                        ]),
+                        "y": .object([
+                            "type": .string("number"),
+                            "description": .string("Y position (required for 'move')"),
+                        ]),
+                        "width": .object([
+                            "type": .string("number"),
+                            "description": .string("Width (required for 'resize')"),
+                        ]),
+                        "height": .object([
+                            "type": .string("number"),
+                            "description": .string("Height (required for 'resize')"),
+                        ]),
+                    ]),
+                    "required": .array([.string("app_name"), .string("action")]),
+                ])
+            ),
+            Tool(
+                name: "run_applescript",
+                description: """
+                    Execute AppleScript or JXA (JavaScript for Automation) code. \
+                    Useful for scriptable apps like Finder, Mail, Safari. \
+                    Scripts containing 'do shell script' are blocked for safety.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "script": .object([
+                            "type": .string("string"),
+                            "description": .string("The script source code to execute"),
+                        ]),
+                        "language": .object([
+                            "type": .string("string"),
+                            "enum": .array([
+                                .string("applescript"), .string("javascript"),
+                            ]),
+                            "description": .string(
+                                "Script language (default: applescript). Use 'javascript' for JXA."
+                            ),
+                        ]),
+                    ]),
+                    "required": .array([.string("script")]),
+                ])
+            ),
+            Tool(
+                name: "get_menu_bar",
+                description: """
+                    Read all menu bar items for an app. Returns a structured JSON tree \
+                    with menu titles, item names, enabled state, and keyboard shortcuts.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "app_name": .object([
+                            "type": .string("string"),
+                            "description": .string("Target application name"),
+                        ]),
+                    ]),
+                    "required": .array([.string("app_name")]),
+                ])
+            ),
+            Tool(
+                name: "click_menu_item",
+                description: """
+                    Click a menu item by path. Navigate the menu hierarchy using \
+                    ' > ' as separator (e.g. 'File > Export > PDF'). Matching is \
+                    case-insensitive with ellipsis normalization.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "app_name": .object([
+                            "type": .string("string"),
+                            "description": .string("Target application name"),
+                        ]),
+                        "menu_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Menu path with ' > ' separator (e.g. 'File > Export > PDF')"
+                            ),
+                        ]),
+                    ]),
+                    "required": .array([.string("app_name"), .string("menu_path")]),
+                ])
+            ),
+            Tool(
+                name: "read_pasteboard",
+                description: """
+                    Read clipboard contents in the specified format. Supports text, \
+                    HTML, RTF, and file URLs.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "format": .object([
+                            "type": .string("string"),
+                            "enum": .array([
+                                .string("text"), .string("html"),
+                                .string("rtf"), .string("file_urls"),
+                            ]),
+                            "description": .string(
+                                "Content format to read (default: text)"
+                            ),
+                        ]),
+                    ]),
+                ])
+            ),
+            Tool(
+                name: "write_pasteboard",
+                description: """
+                    Write content to the clipboard. Supports text and HTML formats.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "content": .object([
+                            "type": .string("string"),
+                            "description": .string("Content to write to clipboard"),
+                        ]),
+                        "format": .object([
+                            "type": .string("string"),
+                            "enum": .array([.string("text"), .string("html")]),
+                            "description": .string(
+                                "Content format (default: text)"
+                            ),
+                        ]),
+                    ]),
+                    "required": .array([.string("content")]),
+                ])
+            ),
         ])
     }
 
@@ -187,6 +535,47 @@ func registerTools(on server: Server) async {
                 return try handlePressKey(
                     params: params, appResolver: appResolver, actions: axActions
                 )
+            case "scroll":
+                return try handleScroll(
+                    params: params, appResolver: appResolver, search: elementSearch,
+                    actions: axActions
+                )
+            case "mouse_click_at":
+                return try handleMouseClickAt(
+                    params: params, appResolver: appResolver, actions: axActions
+                )
+            case "mouse_drag":
+                return try handleMouseDrag(
+                    params: params, appResolver: appResolver, actions: axActions
+                )
+            case "take_screenshot":
+                return try handleTakeScreenshot(
+                    params: params, appResolver: appResolver
+                )
+            case "open_application":
+                return try handleOpenApplication(
+                    params: params, appResolver: appResolver, actions: axActions
+                )
+            case "open_url":
+                return try handleOpenURL(params: params)
+            case "manage_window":
+                return try handleManageWindow(
+                    params: params, appResolver: appResolver
+                )
+            case "run_applescript":
+                return try handleRunAppleScript(params: params)
+            case "get_menu_bar":
+                return try handleGetMenuBar(
+                    params: params, appResolver: appResolver
+                )
+            case "click_menu_item":
+                return try handleClickMenuItem(
+                    params: params, appResolver: appResolver
+                )
+            case "read_pasteboard":
+                return try handleReadPasteboard(params: params)
+            case "write_pasteboard":
+                return try handleWritePasteboard(params: params)
             default:
                 return .init(
                     content: [

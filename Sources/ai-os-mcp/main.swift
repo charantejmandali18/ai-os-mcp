@@ -18,7 +18,7 @@ func log(_ message: String) {
 
 // MARK: - Main
 
-log("Starting ai-os-mcp v0.1.0...")
+log("Starting ai-os-mcp v0.2.0...")
 
 // Check accessibility permission (with prompt on first run)
 let trusted = axCheckPermission()
@@ -32,7 +32,7 @@ if !trusted {
 // Create MCP server
 let server = Server(
     name: "ai-os-mcp",
-    version: "0.1.0",
+    version: "0.2.0",
     capabilities: Server.Capabilities(
         tools: .init(listChanged: false)
     )
