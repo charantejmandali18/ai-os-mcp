@@ -351,6 +351,29 @@ func registerTools(on server: Server) async {
                 ])
             ),
             Tool(
+                name: "navigate_url",
+                description: """
+                    Open a URL in a specific browser app. Activates the app and navigates \
+                    in one fast call. Works with any browser (Chrome, Dia, Safari, Arc, Firefox).
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "url": .object([
+                            "type": .string("string"),
+                            "description": .string("URL to open"),
+                        ]),
+                        "app_name": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Browser app name (e.g. 'Google Chrome', 'Dia', 'Safari', 'Arc')"
+                            ),
+                        ]),
+                    ]),
+                    "required": .array([.string("url"), .string("app_name")]),
+                ])
+            ),
+            Tool(
                 name: "manage_window",
                 description: """
                     Resize, move, minimize, maximize, fullscreen, or restore a window. \
@@ -558,6 +581,8 @@ func registerTools(on server: Server) async {
                 )
             case "open_url":
                 return try handleOpenURL(params: params)
+            case "navigate_url":
+                return try handleNavigateURL(params: params, appResolver: appResolver)
             case "manage_window":
                 return try handleManageWindow(
                     params: params, appResolver: appResolver
