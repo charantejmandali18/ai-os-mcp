@@ -63,4 +63,38 @@ echo "  2. Click + and add: $BINARY_PATH"
 echo "  3. Toggle it ON"
 echo "  4. Restart Claude Desktop"
 echo ""
-echo "Done! Restart Claude Desktop to start using ai-os-mcp."
+echo "=== ai-os-browser (Node.js companion) ==="
+BROWSER_DIR="$(cd "$(dirname "$0")/../ai-os-browser" 2>/dev/null && pwd)" || true
+BROWSER_INSTALL_DIR="$HOME/.local/lib/ai-os-browser"
+
+if [ -d "$BROWSER_DIR" ]; then
+    echo "Building ai-os-browser..."
+    cd "$BROWSER_DIR"
+    npm install --silent
+    npm run build
+
+    echo "Installing to $BROWSER_INSTALL_DIR..."
+    mkdir -p "$BROWSER_INSTALL_DIR"
+    cp -r dist/ "$BROWSER_INSTALL_DIR/dist/"
+    cp package.json "$BROWSER_INSTALL_DIR/"
+    cp -r node_modules/ "$BROWSER_INSTALL_DIR/node_modules/"
+
+    # Add browser server to Claude Desktop config
+    if [ -f "$CONFIG_FILE" ] && command -v jq &>/dev/null; then
+        BROWSER_ENTRY="{\"command\":\"node\",\"args\":[\"$BROWSER_INSTALL_DIR/dist/index.js\"]}"
+        UPDATED=$(jq --argjson entry "$BROWSER_ENTRY" '.mcpServers["ai-os-browser"] = $entry' "$CONFIG_FILE")
+        echo "$UPDATED" > "$CONFIG_FILE"
+        echo "Added ai-os-browser to Claude Desktop config."
+    else
+        echo ""
+        echo "Also add ai-os-browser to your MCP config:"
+        echo "  \"ai-os-browser\": { \"command\": \"node\", \"args\": [\"$BROWSER_INSTALL_DIR/dist/index.js\"] }"
+    fi
+
+    echo "ai-os-browser installed."
+else
+    echo "ai-os-browser directory not found, skipping."
+fi
+
+echo ""
+echo "Done! Restart Claude Desktop to start using ai-os-mcp + ai-os-browser."
