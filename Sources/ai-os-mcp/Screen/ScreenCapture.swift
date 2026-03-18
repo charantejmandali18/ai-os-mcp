@@ -15,6 +15,10 @@ final class ScreenCapture: NSObject, @unchecked Sendable, SCStreamOutput, SCStre
     private var lastSentHash: UInt64 = 0
     private let lock = NSLock()
     private var isRunning = false
+    private var actualScreenWidth: Int = 1512
+    private var actualScreenHeight: Int = 982
+    private static let captureWidth = 1280
+    private static let captureHeight = 800
 
     // MARK: - Persistent Stream
 
@@ -26,6 +30,9 @@ final class ScreenCapture: NSObject, @unchecked Sendable, SCStreamOutput, SCStre
         guard let display = content.displays.first else {
             throw AIOSError.screenshotFailed(detail: "No display found")
         }
+
+        // Store actual screen dimensions for coordinate scaling
+        setScreenDimensions(width: display.width, height: display.height)
 
         let filter = SCContentFilter(
             display: display,
@@ -62,6 +69,13 @@ final class ScreenCapture: NSObject, @unchecked Sendable, SCStreamOutput, SCStre
         lock.lock()
         stream = newStream
         isRunning = true
+        lock.unlock()
+    }
+
+    private func setScreenDimensions(width: Int, height: Int) {
+        lock.lock()
+        actualScreenWidth = width
+        actualScreenHeight = height
         lock.unlock()
     }
 
@@ -244,10 +258,12 @@ final class ScreenCapture: NSObject, @unchecked Sendable, SCStreamOutput, SCStre
         let hash = frameHash
         let changed = hash != lastSentHash
         if changed { lastSentHash = hash }
+        let screenW = actualScreenWidth
+        let screenH = actualScreenHeight
         lock.unlock()
 
         guard let frame = frame else { return ([], 0, 0, false) }
-        guard changed else { return ([], frame.width, frame.height, false) }
+        guard changed else { return ([], screenW, screenH, false) }
 
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .fast
@@ -256,23 +272,25 @@ final class ScreenCapture: NSObject, @unchecked Sendable, SCStreamOutput, SCStre
         let handler = VNImageRequestHandler(cgImage: frame)
         try? handler.perform([request])
 
-        let w = Double(frame.width)
-        let h = Double(frame.height)
+        // Scale from capture coordinates to real screen coordinates
+        let scaleX = Double(screenW) / Double(frame.width)
+        let scaleY = Double(screenH) / Double(frame.height)
 
         let texts = (request.results ?? []).compactMap { observation -> ScreenText? in
             guard let candidate = observation.topCandidates(1).first else { return nil }
             let box = observation.boundingBox
+            // Vision returns normalized (0-1) coords, scale directly to real screen pixels
             return ScreenText(
                 text: candidate.string,
-                x: Int(box.origin.x * w),
-                y: Int((1.0 - box.origin.y - box.height) * h),
-                width: Int(box.width * w),
-                height: Int(box.height * h),
+                x: Int(box.origin.x * Double(screenW)),
+                y: Int((1.0 - box.origin.y - box.height) * Double(screenH)),
+                width: Int(box.width * Double(screenW)),
+                height: Int(box.height * Double(screenH)),
                 confidence: Double(round(candidate.confidence * 100) / 100)
             )
         }
 
-        return (texts, frame.width, frame.height, true)
+        return (texts, screenW, screenH, true)
     }
 
     // MARK: - Frame Hashing

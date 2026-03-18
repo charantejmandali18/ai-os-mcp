@@ -532,41 +532,63 @@ func registerTools(on server: Server, screenCapture: ScreenCapture) async {
                 name: "get_screen",
                 description: """
                     Read what's on screen as structured text — zero images. \
-                    Uses Vision OCR to extract all text with pixel coordinates, \
-                    plus the AX tree for interactive elements. Returns pure JSON \
-                    that Claude processes as text, not vision. ~50-250ms.
+                    Uses Vision OCR to extract all text with real screen pixel \
+                    coordinates. Coordinates can be passed directly to click_at. \
+                    ~50-250ms on Apple Silicon.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([:]),
+                ])
+            ),
+            Tool(
+                name: "run_macro",
+                description: """
+                    Execute multiple actions in ONE call — no round-trips. \
+                    Pass an array of steps (click_at, type, press_key, navigate, wait). \
+                    OCR runs once at the end. Coordinates from get_screen work directly.
                     """,
                 inputSchema: .object([
                     "type": .string("object"),
                     "properties": .object([
                         "app_name": .object([
                             "type": .string("string"),
+                            "description": .string("Target application name"),
+                        ]),
+                        "steps": .object([
+                            "type": .string("array"),
+                            "items": .object([
+                                "type": .string("object"),
+                                "properties": .object([
+                                    "action": .object([
+                                        "type": .string("string"),
+                                        "description": .string(
+                                            "click_at, type, press_key, navigate, wait"
+                                        ),
+                                    ]),
+                                ]),
+                            ]),
                             "description": .string(
-                                "Optional: include AX tree for this app's interactive elements"
+                                "Array of action steps. Each step has 'action' plus action-specific params (x/y, text, key/modifiers, url, ms)"
                             ),
                         ]),
-                        "include_ax_tree": .object([
+                        "skip_ocr": .object([
                             "type": .string("boolean"),
                             "description": .string(
-                                "Include AX tree elements (default: true)"
-                            ),
-                        ]),
-                        "include_ocr": .object([
-                            "type": .string("boolean"),
-                            "description": .string(
-                                "Include Vision OCR text extraction (default: true)"
+                                "Skip OCR at the end (default: false)"
                             ),
                         ]),
                     ]),
+                    "required": .array([.string("app_name"), .string("steps")]),
                 ])
             ),
             Tool(
                 name: "act_and_see",
                 description: """
-                    Perform an action AND return what's on screen as structured text — \
-                    zero images. Uses Vision OCR after the action to extract all text \
-                    with pixel coordinates. Actions: click, click_at (coordinates), \
-                    type, press_key, navigate (open URL in app).
+                    Perform ONE action and return OCR text. For multiple actions use \
+                    run_macro instead. Actions: click_at (x/y coordinates from \
+                    get_screen), type, press_key, navigate, wait. Set skip_ocr=true \
+                    if you don't need to see the result.
                     """,
                 inputSchema: .object([
                     "type": .string("object"),
@@ -578,8 +600,8 @@ func registerTools(on server: Server, screenCapture: ScreenCapture) async {
                         "action": .object([
                             "type": .string("string"),
                             "enum": .array([
-                                .string("click"), .string("click_at"), .string("type"),
-                                .string("press_key"), .string("navigate"),
+                                .string("click_at"), .string("type"),
+                                .string("press_key"), .string("navigate"), .string("wait"),
                             ]),
                             "description": .string("Action to perform"),
                         ]),
@@ -628,6 +650,12 @@ func registerTools(on server: Server, screenCapture: ScreenCapture) async {
                             "type": .string("number"),
                             "description": .string(
                                 "Screen y coordinate (for click_at action)"
+                            ),
+                        ]),
+                        "skip_ocr": .object([
+                            "type": .string("boolean"),
+                            "description": .string(
+                                "Skip OCR result — just perform the action (default: false)"
                             ),
                         ]),
                     ]),
@@ -709,14 +737,17 @@ func registerTools(on server: Server, screenCapture: ScreenCapture) async {
                 return try handleWritePasteboard(params: params)
             case "get_screen":
                 return try handleGetScreen(
-                    params: params, appResolver: appResolver,
-                    screenCapture: screenCapture, treeReader: treeReader
+                    params: params, screenCapture: screenCapture
                 )
             case "act_and_see":
                 return try handleActAndSee(
                     params: params, appResolver: appResolver,
-                    search: elementSearch, actions: axActions,
-                    screenCapture: screenCapture
+                    actions: axActions, screenCapture: screenCapture
+                )
+            case "run_macro":
+                return try handleRunMacro(
+                    params: params, appResolver: appResolver,
+                    actions: axActions, screenCapture: screenCapture
                 )
             default:
                 return .init(
