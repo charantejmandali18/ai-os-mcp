@@ -15,7 +15,7 @@ func handleScroll(
         throw AIOSError.invalidArguments(detail: "direction is required (up, down, left, right)")
     }
 
-    let amount = params.arguments?["amount"]?.intValue ?? 3
+    let amount = params.arguments?["amount"].flatMap({ Int($0) }) ?? 3
     let elementSearchQuery = params.arguments?["element_search"]?.stringValue
 
     let (pid, resolvedName) = try appResolver.resolve(appName: appName)

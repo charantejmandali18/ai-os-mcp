@@ -6,20 +6,20 @@ func handleMouseDrag(
     appResolver: AppResolver,
     actions: AXActions
 ) throws -> CallTool.Result {
-    guard let fromX = params.arguments?["from_x"]?.doubleValue else {
+    guard let fromXVal = params.arguments?["from_x"], let fromX = Double(fromXVal) else {
         throw AIOSError.invalidArguments(detail: "from_x is required")
     }
-    guard let fromY = params.arguments?["from_y"]?.doubleValue else {
+    guard let fromYVal = params.arguments?["from_y"], let fromY = Double(fromYVal) else {
         throw AIOSError.invalidArguments(detail: "from_y is required")
     }
-    guard let toX = params.arguments?["to_x"]?.doubleValue else {
+    guard let toXVal = params.arguments?["to_x"], let toX = Double(toXVal) else {
         throw AIOSError.invalidArguments(detail: "to_x is required")
     }
-    guard let toY = params.arguments?["to_y"]?.doubleValue else {
+    guard let toYVal = params.arguments?["to_y"], let toY = Double(toYVal) else {
         throw AIOSError.invalidArguments(detail: "to_y is required")
     }
 
-    let duration = params.arguments?["duration"]?.doubleValue ?? 0.5
+    let duration = params.arguments?["duration"].flatMap({ Double($0) }) ?? 0.5
     let appName = params.arguments?["app_name"]?.stringValue
 
     if let appName = appName {

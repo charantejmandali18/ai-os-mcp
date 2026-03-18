@@ -9,10 +9,10 @@ func handleTakeScreenshot(
     appResolver: AppResolver
 ) throws -> CallTool.Result {
     let appName = params.arguments?["app_name"]?.stringValue
-    let maxWidth = params.arguments?["max_width"]?.intValue ?? 1280
-    let maxHeight = params.arguments?["max_height"]?.intValue ?? 800
+    let maxWidth = params.arguments?["max_width"].flatMap({ Int($0) }) ?? 1280
+    let maxHeight = params.arguments?["max_height"].flatMap({ Int($0) }) ?? 800
     let formatStr = params.arguments?["format"]?.stringValue ?? "jpeg"
-    let quality = params.arguments?["quality"]?.doubleValue ?? 0.7
+    let quality = params.arguments?["quality"].flatMap({ Double($0) }) ?? 0.7
 
     // Clean up old screenshots
     cleanupOldScreenshots()

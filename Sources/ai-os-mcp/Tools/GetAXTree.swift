@@ -15,8 +15,8 @@ func handleGetAXTree(
         throw AIOSError.invalidArguments(detail: "app_name is required")
     }
 
-    let maxDepth = params.arguments?["max_depth"]?.intValue ?? 5
-    let maxChildren = params.arguments?["max_children"]?.intValue ?? 50
+    let maxDepth = params.arguments?["max_depth"].flatMap({ Int($0) }) ?? 5
+    let maxChildren = params.arguments?["max_children"].flatMap({ Int($0) }) ?? 50
     let filter = params.arguments?["filter"]?.stringValue
 
     let (pid, resolvedName) = try appResolver.resolve(appName: appName)

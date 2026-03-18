@@ -6,10 +6,10 @@ func handleMouseClickAt(
     appResolver: AppResolver,
     actions: AXActions
 ) throws -> CallTool.Result {
-    guard let x = params.arguments?["x"]?.doubleValue else {
+    guard let xVal = params.arguments?["x"], let x = Double(xVal) else {
         throw AIOSError.invalidArguments(detail: "x coordinate is required")
     }
-    guard let y = params.arguments?["y"]?.doubleValue else {
+    guard let yVal = params.arguments?["y"], let y = Double(yVal) else {
         throw AIOSError.invalidArguments(detail: "y coordinate is required")
     }
 

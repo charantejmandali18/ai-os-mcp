@@ -20,7 +20,7 @@ func handleClickElement(
     }
 
     let role = params.arguments?["role"]?.stringValue
-    let index = params.arguments?["index"]?.intValue ?? 0
+    let index = params.arguments?["index"].flatMap({ Int($0) }) ?? 0
 
     let (pid, _) = try appResolver.resolve(appName: appName)
     let appElement = AXUIElementCreateApplication(pid)

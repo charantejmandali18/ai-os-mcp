@@ -36,8 +36,8 @@ func handleManageWindow(
 
     switch action.lowercased() {
     case "move":
-        guard let x = params.arguments?["x"]?.doubleValue,
-              let y = params.arguments?["y"]?.doubleValue else {
+        guard let xVal = params.arguments?["x"], let x = Double(xVal),
+              let yVal = params.arguments?["y"], let y = Double(yVal) else {
             throw AIOSError.invalidArguments(detail: "move requires x and y parameters")
         }
         var point = CGPoint(x: x, y: y)
@@ -48,8 +48,8 @@ func handleManageWindow(
         }
 
     case "resize":
-        guard let width = params.arguments?["width"]?.doubleValue,
-              let height = params.arguments?["height"]?.doubleValue else {
+        guard let widthVal = params.arguments?["width"], let width = Double(widthVal),
+              let heightVal = params.arguments?["height"], let height = Double(heightVal) else {
             throw AIOSError.invalidArguments(detail: "resize requires width and height parameters")
         }
         var size = CGSize(width: width, height: height)
