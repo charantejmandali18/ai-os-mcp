@@ -577,7 +577,7 @@ func registerTools(on server: Server, screenCapture: ScreenCapture) async {
                         "action": .object([
                             "type": .string("string"),
                             "enum": .array([
-                                .string("click"), .string("type"),
+                                .string("click"), .string("click_at"), .string("type"),
                                 .string("press_key"), .string("navigate"),
                             ]),
                             "description": .string("Action to perform"),
@@ -615,6 +615,18 @@ func registerTools(on server: Server, screenCapture: ScreenCapture) async {
                             "type": .string("integer"),
                             "description": .string(
                                 "Which match to click (0-indexed, for click action)"
+                            ),
+                        ]),
+                        "x": .object([
+                            "type": .string("number"),
+                            "description": .string(
+                                "Screen x coordinate (for click_at action)"
+                            ),
+                        ]),
+                        "y": .object([
+                            "type": .string("number"),
+                            "description": .string(
+                                "Screen y coordinate (for click_at action)"
                             ),
                         ]),
                     ]),

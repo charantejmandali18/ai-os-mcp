@@ -71,8 +71,18 @@ func handleActAndSee(
         process.waitUntilExit()
         actionResult = "navigated to '\(fullURL)'"
 
+    case "click_at":
+        guard let xVal = params.arguments?["x"], let x = Double(xVal) else {
+            throw AIOSError.invalidArguments(detail: "x coordinate is required for click_at action")
+        }
+        guard let yVal = params.arguments?["y"], let y = Double(yVal) else {
+            throw AIOSError.invalidArguments(detail: "y coordinate is required for click_at action")
+        }
+        try actions.mouseClick(x: x, y: y, button: .left, clickType: .single)
+        actionResult = "clicked at (\(Int(x)), \(Int(y)))"
+
     default:
-        throw AIOSError.invalidArguments(detail: "Unknown action: '\(action)'. Valid: click, type, press_key, navigate")
+        throw AIOSError.invalidArguments(detail: "Unknown action: '\(action)'. Valid: click, click_at, type, press_key, navigate")
     }
 
     // Wait briefly for the action to take effect, then grab the screen
