@@ -2,7 +2,7 @@ import Foundation
 import MCP
 
 /// Registers all MCP tools and routes CallTool requests to the appropriate handlers.
-func registerTools(on server: Server) async {
+func registerTools(on server: Server, screenCapture: ScreenCapture) async {
     let appResolver = AppResolver()
     let treeReader = AXTreeReader()
     let elementSearch = AXElementSearch()
@@ -528,6 +528,99 @@ func registerTools(on server: Server) async {
                     "required": .array([.string("content")]),
                 ])
             ),
+            Tool(
+                name: "get_screen",
+                description: """
+                    Get the current screen as an inline image with zero capture latency. \
+                    Uses a persistent display stream — the frame is already in memory. \
+                    Optionally includes a compact AX tree summary for an app. \
+                    Returns nothing if the screen hasn't changed since last call.
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "app_name": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Optional: include AX tree summary for this app"
+                            ),
+                        ]),
+                        "include_ax_tree": .object([
+                            "type": .string("boolean"),
+                            "description": .string(
+                                "Include AX tree summary (default: true)"
+                            ),
+                        ]),
+                        "quality": .object([
+                            "type": .string("number"),
+                            "description": .string(
+                                "JPEG quality 0.0-1.0 (default: 0.6)"
+                            ),
+                        ]),
+                    ]),
+                ])
+            ),
+            Tool(
+                name: "act_and_see",
+                description: """
+                    Perform an action AND return the resulting screen in ONE call. \
+                    Eliminates the act-then-screenshot round-trip. Actions: click \
+                    (by AX element search), type, press_key, navigate (open URL in app).
+                    """,
+                inputSchema: .object([
+                    "type": .string("object"),
+                    "properties": .object([
+                        "app_name": .object([
+                            "type": .string("string"),
+                            "description": .string("Target application name"),
+                        ]),
+                        "action": .object([
+                            "type": .string("string"),
+                            "enum": .array([
+                                .string("click"), .string("type"),
+                                .string("press_key"), .string("navigate"),
+                            ]),
+                            "description": .string("Action to perform"),
+                        ]),
+                        "search": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Element search text (for click action)"
+                            ),
+                        ]),
+                        "text": .object([
+                            "type": .string("string"),
+                            "description": .string("Text to type (for type action)"),
+                        ]),
+                        "key": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Key to press (for press_key action)"
+                            ),
+                        ]),
+                        "modifiers": .object([
+                            "type": .string("array"),
+                            "items": .object(["type": .string("string")]),
+                            "description": .string(
+                                "Modifier keys for press_key (command, shift, option, control)"
+                            ),
+                        ]),
+                        "url": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "URL to open (for navigate action)"
+                            ),
+                        ]),
+                        "index": .object([
+                            "type": .string("integer"),
+                            "description": .string(
+                                "Which match to click (0-indexed, for click action)"
+                            ),
+                        ]),
+                    ]),
+                    "required": .array([.string("app_name"), .string("action")]),
+                ])
+            ),
         ])
     }
 
@@ -601,6 +694,17 @@ func registerTools(on server: Server) async {
                 return try handleReadPasteboard(params: params)
             case "write_pasteboard":
                 return try handleWritePasteboard(params: params)
+            case "get_screen":
+                return try handleGetScreen(
+                    params: params, appResolver: appResolver,
+                    screenCapture: screenCapture, treeReader: treeReader
+                )
+            case "act_and_see":
+                return try handleActAndSee(
+                    params: params, appResolver: appResolver,
+                    search: elementSearch, actions: axActions,
+                    screenCapture: screenCapture
+                )
             default:
                 return .init(
                     content: [

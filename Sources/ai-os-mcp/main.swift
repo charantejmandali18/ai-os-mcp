@@ -18,7 +18,7 @@ func log(_ message: String) {
 
 // MARK: - Main
 
-log("Starting ai-os-mcp v0.2.0...")
+log("Starting ai-os-mcp v0.3.0...")
 
 // Check accessibility permission (with prompt on first run)
 let trusted = axCheckPermission()
@@ -29,17 +29,29 @@ if !trusted {
     log("  Tools requiring AX access will return errors until permission is granted.")
 }
 
+// Start persistent screen capture (requires Screen Recording permission)
+let screenCapture = ScreenCapture()
+do {
+    try await screenCapture.start()
+    log("Screen capture stream started (2 FPS persistent)")
+} catch {
+    log("WARNING: Screen capture not available: \(error.localizedDescription)")
+    log("  Open System Settings → Privacy & Security → Screen Recording")
+    log("  Grant permission to ai-os-mcp, then restart.")
+    log("  get_screen and act_and_see tools will return errors.")
+}
+
 // Create MCP server
 let server = Server(
     name: "ai-os-mcp",
-    version: "0.2.0",
+    version: "0.3.0",
     capabilities: Server.Capabilities(
         tools: .init(listChanged: false)
     )
 )
 
 // Register all tools
-await registerTools(on: server)
+await registerTools(on: server, screenCapture: screenCapture)
 
 log("MCP server ready. Listening on stdio...")
 
