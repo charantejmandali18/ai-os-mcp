@@ -19,6 +19,7 @@ echo "Installing to $INSTALL_DIR..."
 mkdir -p "$INSTALL_DIR"
 cp "$BUILT_BINARY" "$INSTALL_DIR/$BINARY_NAME"
 chmod +x "$INSTALL_DIR/$BINARY_NAME"
+codesign --force --sign - "$INSTALL_DIR/$BINARY_NAME"
 
 BINARY_PATH="$INSTALL_DIR/$BINARY_NAME"
 echo "Installed: $BINARY_PATH"
